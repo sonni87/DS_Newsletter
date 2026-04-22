@@ -1,12 +1,10 @@
 """
 Streamlit Web-App für Beta-Newsletter Förderausschreibungen.
-Analyse direkt aus eingefügtem Volltext.
+Volltext-Analyse mit LLM.
 """
 
-import os
 import logging
 import sys
-
 import streamlit as st
 
 logging.basicConfig(
@@ -25,9 +23,9 @@ st.set_page_config(
 )
 
 st.title("📰 Beta-Newsletter – Förderausschreibungen")
-st.markdown("Füge den **Volltext** einer Förderausschreibung ein – das Tool extrahiert automatisch die D7‑Newsletter‑Felder.")
+st.markdown("Volltext der Ausschreibung einfügen – die KI generiert eine Zusammenfassung im D7‑Format.")
 
-# Session State für Modelle und Ergebnisse
+# Session State
 if 'available_models' not in st.session_state:
     st.session_state.available_models = []
 if 'selected_model' not in st.session_state:
@@ -37,12 +35,11 @@ if 'last_result' not in st.session_state:
 
 with st.sidebar:
     st.header("⚙️ Konfiguration")
-
     api_key_input = st.text_input(
         "KIConnect API-Key",
         type="password",
         placeholder="Aus Umgebungsvariable/Secrets",
-        help="API-Key hier eingeben oder als KICONNECT_API_KEY setzen."
+        help="Wird automatisch aus Streamlit Secrets oder KICONNECT_API_KEY geladen."
     )
 
     if st.button("🔌 API-Verbindung testen & Modelle laden"):
@@ -63,7 +60,6 @@ with st.sidebar:
         st.subheader("🤖 Modellauswahl")
         if st.session_state.selected_model not in st.session_state.available_models:
             st.session_state.selected_model = st.session_state.available_models[0]
-
         st.session_state.selected_model = st.selectbox(
             "Wähle ein Modell:",
             options=st.session_state.available_models,
@@ -75,50 +71,42 @@ with st.sidebar:
         st.markdown("**Keine Modelle geladen. Bitte Verbindung testen.**")
 
     st.divider()
-    st.markdown("---")
-    st.caption("Beta-Newsletter v0.5.0 – Textanalyse")
+    st.caption("Beta-Newsletter v0.6.0 – LLM-Textanalyse")
 
-# Hauptbereich: Texteingabe
+# Hauptbereich
 text_input = st.text_area(
-    "Volltext der Ausschreibung einfügen:",
-    height=300,
-    placeholder="Den kompletten Text der Bekanntmachung hier einfügen..."
+    "Volltext der Ausschreibung hier einfügen:",
+    height=400,
+    placeholder="Den kompletten Bekanntmachungstext einfügen..."
 )
 
-col1, col2, col3 = st.columns([1, 1, 3])
+col1, col2 = st.columns([1, 5])
 with col1:
-    analyze_button = st.button("🔍 Text analysieren", type="primary")
+    analyze_btn = st.button("🔍 Text analysieren", type="primary")
 with col2:
-    clear_button = st.button("🧹 Eingabe löschen")
+    if st.button("🧹 Eingabe löschen"):
+        st.session_state.last_result = None
+        st.rerun()
 
-if clear_button:
-    st.session_state.last_result = None
-    st.rerun()
-
-if analyze_button and text_input:
-    with st.spinner("Analysiere Text... "):
+if analyze_btn and text_input:
+    with st.spinner("Analysiere Text mit KI ..."):
         try:
             client = LLMClient(api_key=api_key_input if api_key_input else None)
             if st.session_state.selected_model:
                 client.model = st.session_state.selected_model
-
             result = summarize_text(text_input.strip(), client=client)
             st.session_state.last_result = result
-
         except KIConnectError as e:
             st.error(f"API-Fehler: {e}")
         except Exception as e:
             st.exception(e)
-            st.error("Ein unerwarteter Fehler ist aufgetreten.")
 
-# Ergebnis anzeigen
 if st.session_state.last_result:
     st.divider()
     st.subheader("📋 D7-Newsletter-Eintrag")
     res = st.session_state.last_result
     if res["status"] == "success":
         st.markdown(res["summary"])
-        # Download-Button
         st.download_button(
             label="📥 Als Markdown herunterladen",
             data=res["summary"],
@@ -128,8 +116,5 @@ if st.session_state.last_result:
     else:
         st.error(f"Fehler: {res.get('error', 'Unbekannter Fehler')}")
 
-elif analyze_button:
+elif analyze_btn:
     st.warning("Bitte Text einfügen.")
-
-st.sidebar.markdown("---")
-st.sidebar.caption("Beta-Newsletter v0.5.0")
