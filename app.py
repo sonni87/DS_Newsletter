@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS für Uni-Köln-Design und roten Button
+# Custom CSS für Uni-Köln-Design
 st.markdown("""
 <style>
     /* Hauptüberschrift in Uni-Blau */
@@ -38,22 +38,14 @@ st.markdown("""
         color: white;
     }
     
-    /* Roter Button für "Ausschreibung zusammenfassen" */
-    .red-button > button {
+    /* Roter Haupt-Button */
+    div[data-testid="stButton"]:has(button:contains("Ausschreibung zusammenfassen")) > button {
         background-color: #EF7872 !important;
         color: white !important;
-        border: none !important;
         font-weight: bold !important;
     }
-    .red-button > button:hover {
+    div[data-testid="stButton"]:has(button:contains("Ausschreibung zusammenfassen")) > button:hover {
         background-color: #D9655F !important;
-    }
-    
-    /* Kleiner Button für "Textfeld leeren" */
-    .small-button > button {
-        font-size: 0.8rem !important;
-        padding: 0.25rem 0.75rem !important;
-        background-color: #6c757d !important;
     }
     
     /* Download-Buttons in Uni-Korall */
@@ -189,42 +181,36 @@ with col2:
         placeholder="Den kompletten Ausschreibungstext hier einfügen...",
         key="user_text_input"
     )
+    # Synchronisiere Session State
     st.session_state.user_text = user_text
 
 # --- Button-Zeile: Textfeld leeren (rechts) ---
 col_empty1, col_empty2 = st.columns([5, 1])
 with col_empty2:
-    # Kleiner Button (über CSS-Klasse)
-    st.markdown('<div class="small-button">', unsafe_allow_html=True)
-    if st.button("🧹 Textfeld leeren", key="clear_btn"):
+    if st.button("🧹 Textfeld leeren"):
         st.session_state.user_text = ""
         st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # --- Großer roter Button zentriert ---
 col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
 with col_btn2:
-    st.markdown('<div class="red-button">', unsafe_allow_html=True)
-    analyze_clicked = st.button("🚀 Ausschreibung zusammenfassen", use_container_width=True, key="analyze_btn")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-if analyze_clicked:
-    if not st.session_state.user_text.strip():
-        st.warning("Bitte Ausschreibungstext eingeben.")
-    else:
-        with st.spinner("Anfrage an KI:connect ..."):
-            try:
-                client = LLMClient(api_key=api_key_input if api_key_input else None)
-                if st.session_state.selected_model:
-                    client.model = st.session_state.selected_model
-                final_prompt = prompt_template.replace("{text}", st.session_state.user_text)
-                response = client.generate(final_prompt, temperature=0.1, max_tokens=2048)
-                st.session_state.response = response
-                st.session_state.translated_response = ""
-            except KIConnectError as e:
-                st.error(f"API-Fehler: {e}")
-            except Exception as e:
-                st.exception(e)
+    if st.button("🚀 Ausschreibung zusammenfassen", use_container_width=True):
+        if not st.session_state.user_text.strip():
+            st.warning("Bitte Ausschreibungstext eingeben.")
+        else:
+            with st.spinner("Anfrage an KI:connect ..."):
+                try:
+                    client = LLMClient(api_key=api_key_input if api_key_input else None)
+                    if st.session_state.selected_model:
+                        client.model = st.session_state.selected_model
+                    final_prompt = prompt_template.replace("{text}", st.session_state.user_text)
+                    response = client.generate(final_prompt, temperature=0.1, max_tokens=2048)
+                    st.session_state.response = response
+                    st.session_state.translated_response = ""
+                except KIConnectError as e:
+                    st.error(f"API-Fehler: {e}")
+                except Exception as e:
+                    st.exception(e)
 
 # Ergebnis anzeigen
 if st.session_state.response:
@@ -264,7 +250,7 @@ with col_trans1:
 with col_trans2:
     st.write("")
     st.write("")
-    translate_btn = st.button("🔄 Übersetzen", type="secondary")
+    translate_btn = st.button("🔄 Übersetzen")
 
 if translate_btn and text_to_translate.strip():
     with st.spinner("Übersetze ..."):
