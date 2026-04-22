@@ -11,7 +11,6 @@ from llm_client import LLMClient, KIConnectError
 
 logger = logging.getLogger(__name__)
 
-# Prompt-Vorlage für die Zusammenfassung
 SUMMARY_PROMPT_TEMPLATE = """
 Du bist ein Experte für Fördermittel und erstellst präzise Zusammenfassungen von Ausschreibungen.
 
@@ -36,31 +35,22 @@ Antworte ausschließlich mit der formatierten Zusammenfassung, ohne zusätzliche
 """
 
 
-def summarize_urls(urls: List[str], api_key: Optional[str] = None) -> List[Dict[str, Any]]:
-    """
-    Verarbeitet eine Liste von URLs, scraped sie und generiert LLM-Zusammenfassungen.
+def summarize_urls(urls: List[str], client: Optional[LLMClient] = None) -> List[Dict[str, Any]]:
+    if client is None:
+        client = LLMClient()
 
-    Args:
-        urls: Liste von URLs
-        api_key: Optionaler API-Key (sonst aus Umgebung)
-
-    Returns:
-        Liste von Dictionaries mit Zusammenfassungen und Metadaten
-    """
-    results = []
-    client = LLMClient(api_key=api_key)
-
-    # Sicherstellen, dass ein API-Key vorhanden ist, bevor wir scrapen
+    # API-Key prüfen
     try:
         client._ensure_api_key()
     except KIConnectError as e:
         raise KIConnectError(
-            "Kein API-Key konfiguriert. Bitte gib einen Key in der Seitenleiste ein "
-            "oder setze die Umgebungsvariable KICONNECT_API_KEY."
+            "Kein API-Key konfiguriert. Bitte in der Seitenleiste eingeben."
         ) from e
 
     if not client.check_connection():
-        raise KIConnectError("Keine Verbindung zur LLM-API möglich. Bitte API-Key und Internetverbindung prüfen.")
+        raise KIConnectError("Keine Verbindung zur LLM-API möglich.")
+
+    results = []
 
     for url in urls:
         logger.info(f"Verarbeite {url}")
@@ -75,7 +65,6 @@ def summarize_urls(urls: List[str], api_key: Optional[str] = None) -> List[Dict[
             "error": None
         }
 
-        # 1. Scraping
         scraped = scrape_url(url)
         if scraped["status"] != "success":
             result["error"] = scraped.get("error", "Scraping fehlgeschlagen")
@@ -90,7 +79,6 @@ def summarize_urls(urls: List[str], api_key: Optional[str] = None) -> List[Dict[
             results.append(result)
             continue
 
-        # 2. Extraktion von Metadaten
         deadline = extract_deadline(text)
         funding = extract_funding(text)
         institution = extract_institution(text)
@@ -99,9 +87,7 @@ def summarize_urls(urls: List[str], api_key: Optional[str] = None) -> List[Dict[
         result["funding"] = funding
         result["institution"] = institution
 
-        # 3. LLM-Zusammenfassung
-        # Text kürzen, falls zu lang für Kontextfenster
-        max_text_length = 8000  # ca. 2000 Token
+        max_text_length = 8000
         text_snippet = text[:max_text_length] + ("..." if len(text) > max_text_length else "")
 
         prompt = SUMMARY_PROMPT_TEMPLATE.format(
