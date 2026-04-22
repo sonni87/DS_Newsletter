@@ -177,7 +177,6 @@ if st.button("🚀 Prompt senden", type="primary"):
                 if st.session_state.selected_model:
                     client.model = st.session_state.selected_model
                 final_prompt = prompt_template.replace("{text}", user_text)
-                # Feste Werte für Temperature und Max Tokens
                 response = client.generate(final_prompt, temperature=0.1, max_tokens=2048)
                 st.session_state.response = response
                 st.session_state.translated_response = ""  # Reset Übersetzung
@@ -208,7 +207,7 @@ if st.session_state.response:
             mime="text/plain"
         )
 
-# --- Übersetzungsbereich ---
+# --- Übersetzungsbereich (mit korrigiertem Prompt für Fettdruck) ---
 st.divider()
 st.subheader("🌐 Übersetzung (Deutsch → Englisch)")
 st.markdown("Füge hier einen deutschen Text ein, um ihn ins Englische übersetzen zu lassen.")
@@ -232,8 +231,10 @@ if translate_btn and text_to_translate.strip():
             client = LLMClient(api_key=api_key_input if api_key_input else None)
             if st.session_state.selected_model:
                 client.model = st.session_state.selected_model
-            translation_prompt = f"""Übersetze den folgenden deutschen Text präzise und professionell ins Englische. 
-Behalte die Formatierung (z.B. **Fettdruck**, Aufzählungen) bei.
+            # Verbesserter Prompt: Fettdruck muss erhalten bleiben
+            translation_prompt = f"""Übersetze den folgenden deutschen Text präzise und professionell ins Englische.
+WICHTIG: Behalte die **exakte Formatierung** bei, insbesondere **Fettdruck** (z.B. `**Förderung:**` → `**Funding:**`).
+Die Feldbezeichnungen MÜSSEN fett sein.
 Antworte NUR mit der Übersetzung, ohne zusätzliche Erklärungen.
 
 Deutscher Text:
