@@ -1,6 +1,6 @@
 """
 Streamlit Web-App für Beta-Newsletter Förderausschreibungen.
-Volltext-Analyse mit LLM.
+Volltext-Analyse mit LLM (KI:connect).
 """
 
 import logging
@@ -25,7 +25,7 @@ st.set_page_config(
 st.title("📰 Beta-Newsletter – Förderausschreibungen")
 st.markdown("Volltext der Ausschreibung einfügen – die KI generiert eine Zusammenfassung im D7‑Format.")
 
-# Session State
+# Session State für Modelle und Ergebnis
 if 'available_models' not in st.session_state:
     st.session_state.available_models = []
 if 'selected_model' not in st.session_state:
@@ -33,8 +33,10 @@ if 'selected_model' not in st.session_state:
 if 'last_result' not in st.session_state:
     st.session_state.last_result = None
 
+# Sidebar mit Konfiguration
 with st.sidebar:
     st.header("⚙️ Konfiguration")
+
     api_key_input = st.text_input(
         "KIConnect API-Key",
         type="password",
@@ -71,9 +73,9 @@ with st.sidebar:
         st.markdown("**Keine Modelle geladen. Bitte Verbindung testen.**")
 
     st.divider()
-    st.caption("Beta-Newsletter v0.6.0 – LLM-Textanalyse")
+    st.caption("Beta-Newsletter v0.6.1 – LLM-Textanalyse")
 
-# Hauptbereich
+# Hauptbereich: Texteingabe
 text_input = st.text_area(
     "Volltext der Ausschreibung hier einfügen:",
     height=400,
@@ -101,16 +103,20 @@ if analyze_btn and text_input:
         except Exception as e:
             st.exception(e)
 
+# Ergebnis anzeigen
 if st.session_state.last_result:
     st.divider()
     st.subheader("📋 D7-Newsletter-Eintrag")
     res = st.session_state.last_result
     if res["status"] == "success":
         st.markdown(res["summary"])
+        # Sicherer Dateiname – auch bei None
+        title = res.get('title') or "ausschreibung"
+        safe_title = str(title)[:30]
         st.download_button(
             label="📥 Als Markdown herunterladen",
             data=res["summary"],
-            file_name=f"{res.get('title', 'ausschreibung')[:30]}.md",
+            file_name=f"{safe_title}.md",
             mime="text/markdown"
         )
     else:
