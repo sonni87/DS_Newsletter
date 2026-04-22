@@ -108,7 +108,7 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Beta-Newsletter – Prompt Client v1.0")
 
-# ========== PROMPT (Ihre Vorgabe) ==========
+# ========== AKTUALISIERTER PROMPT (mit Titel-Feld) ==========
 default_prompt = """Du bist Redakteur eines Fördernewsletters für Forschende und Verwaltungsmitarbeiter 
 an deutschen Hochschulen und Forschungseinrichtungen. Deine Aufgabe ist es, 
 Förderausschreibungen präzise und verständlich zusammenzufassen, damit die Leser 
@@ -131,6 +131,8 @@ Regeln:
 </ausschreibung>
 
 Erstelle die Zusammenfassung in folgendem Format:
+
+**Titel:** (Titel oder Name der Ausschreibung)
 
 **Förderung:** (4–6 Sätze: Was wird gefördert? Was ist das Ziel des Programms? 
 Welche Kosten sind förderfähig?)
