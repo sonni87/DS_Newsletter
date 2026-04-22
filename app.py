@@ -12,25 +12,49 @@ st.markdown("Gib deinen Prompt und den Ausschreibungstext ein. Die Antwort wird 
 # Session State
 if "response" not in st.session_state:
     st.session_state.response = ""
+if "available_models" not in st.session_state:
+    st.session_state.available_models = []
+if "selected_model" not in st.session_state:
+    st.session_state.selected_model = None
 
 # Sidebar
 with st.sidebar:
-    st.header("⚙️ Einstellungen")
-    api_key_input = st.text_input("API‑Key", type="password", placeholder="Aus Secrets/Umgebung")
-    model_name = st.text_input("Modell", value="gpt-oss-120b")
+    st.header("⚙️ Konfiguration")
+    api_key_input = st.text_input(
+        "KIConnect API-Key",
+        type="password",
+        placeholder="Aus Umgebungsvariable/Secrets",
+        help="Wird automatisch aus Streamlit Secrets oder KICONNECT_API_KEY geladen."
+    )
+
+    if st.button("🔌 API-Verbindung testen & Modelle laden"):
+        try:
+            client = LLMClient(api_key=api_key_input if api_key_input else None)
+            if client.check_connection():
+                st.success("✅ Verbindung erfolgreich!")
+                models = client.list_models()
+                st.session_state.available_models = models
+                st.success(f"✅ {len(models)} Modelle geladen!")
+            else:
+                st.error("❌ Verbindung fehlgeschlagen.")
+        except Exception as e:
+            st.error(f"❌ Fehler: {e}")
+
+    if st.session_state.available_models:
+        st.divider()
+        st.subheader("🤖 Modellauswahl")
+        if st.session_state.selected_model not in st.session_state.available_models:
+            st.session_state.selected_model = st.session_state.available_models[0]
+        st.session_state.selected_model = st.selectbox(
+            "Wähle ein Modell:",
+            options=st.session_state.available_models,
+            index=st.session_state.available_models.index(st.session_state.selected_model)
+        )
+        st.markdown(f"**Aktives Modell:** `{st.session_state.selected_model}`")
+
+    st.divider()
     temperature = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05)
     max_tokens = st.number_input("Max Tokens", 100, 4096, 2048, 100)
-
-    if st.button("🔌 Verbindung testen"):
-        try:
-            client = LLMClient(api_key=api_key_input or None)
-            client.model = model_name
-            if client.check_connection():
-                st.success("✅ Verbindung erfolgreich")
-            else:
-                st.error("❌ Verbindung fehlgeschlagen")
-        except Exception as e:
-            st.error(f"Fehler: {e}")
 
 # Standard-Prompt (vorausgefüllt)
 default_prompt = """Du bist Experte für Forschungsförderung und erstellst Einträge für einen Fördernewsletter (D7-Format).
@@ -62,9 +86,9 @@ if st.button("🚀 Prompt senden", type="primary"):
     else:
         with st.spinner("Anfrage an KI:connect ..."):
             try:
-                client = LLMClient(api_key=api_key_input or None)
-                client.model = model_name
-                client.timeout = 60
+                client = LLMClient(api_key=api_key_input if api_key_input else None)
+                if st.session_state.selected_model:
+                    client.model = st.session_state.selected_model
                 # Platzhalter ersetzen
                 final_prompt = prompt_template.replace("{text}", user_text)
                 response = client.generate(final_prompt, temperature=temperature, max_tokens=max_tokens)
