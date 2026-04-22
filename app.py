@@ -8,14 +8,12 @@ import sys
 
 import streamlit as st
 
-# Logging konfigurieren
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 
-# Import der eigenen Module
 from summarizer import summarize_urls
 from llm_client import LLMClient, KIConnectError
 
@@ -28,35 +26,54 @@ st.set_page_config(
 st.title("📰 Beta-Newsletter – Förderausschreibungen")
 st.markdown("Gib URLs zu Förderausschreibungen ein und erhalte KI-generierte Zusammenfassungen.")
 
-# Sidebar für Konfiguration
+# Session State für Modelle
+if 'available_models' not in st.session_state:
+    st.session_state.available_models = []
+if 'selected_model' not in st.session_state:
+    st.session_state.selected_model = None
+
 with st.sidebar:
     st.header("⚙️ Konfiguration")
 
-    # API-Key Eingabe (optional, sonst aus Secrets)
     api_key_input = st.text_input(
         "KIConnect API-Key",
         type="password",
         placeholder="Aus Umgebungsvariable/Secrets",
-        help="Wird automatisch aus Streamlit Secrets oder KICONNECT_API_KEY geladen."
+        help="API-Key hier eingeben oder als KICONNECT_API_KEY setzen."
     )
 
-    # Modellname anzeigen (ohne LLMClient zu instanziieren)
-    model_name = os.environ.get("KICONNECT_MODEL", "llama3.2:latest")
-    st.markdown(f"**Aktives Modell:** `{model_name}`")
-
-    # Verbindungstest
-    if st.button("🔌 API-Verbindung testen"):
+    if st.button("🔌 API-Verbindung testen & Modelle laden"):
         try:
             client = LLMClient(api_key=api_key_input if api_key_input else None)
             if client.check_connection():
                 st.success("✅ Verbindung erfolgreich!")
+                models = client.list_models()
+                st.session_state.available_models = models
+                st.success(f"✅ {len(models)} Modelle geladen!")
             else:
-                st.error("❌ Verbindung fehlgeschlagen. API-Key prüfen.")
+                st.error("❌ Verbindung fehlgeschlagen.")
         except Exception as e:
             st.error(f"❌ Fehler: {e}")
 
+    if st.session_state.available_models:
+        st.divider()
+        st.subheader("🤖 Modellauswahl")
+        if st.session_state.selected_model not in st.session_state.available_models:
+            st.session_state.selected_model = st.session_state.available_models[0]
+
+        st.session_state.selected_model = st.selectbox(
+            "Wähle ein Modell:",
+            options=st.session_state.available_models,
+            index=st.session_state.available_models.index(st.session_state.selected_model)
+        )
+        st.markdown(f"**Aktives Modell:** `{st.session_state.selected_model}`")
+    else:
+        st.divider()
+        st.markdown("**Keine Modelle geladen. Bitte Verbindung testen.**")
+
     st.divider()
-    st.markdown("**Hinweis:** Die App nutzt das oben angezeigte LLM-Modell.")
+    st.markdown("---")
+    st.caption("Beta-Newsletter v0.3.0")
 
 # Hauptbereich
 url_input = st.text_area(
@@ -77,10 +94,12 @@ if start_button and url_input:
     else:
         with st.spinner("Verarbeite URLs... Dies kann einige Minuten dauern."):
             try:
-                # API-Key aus Eingabe oder Standard
-                results = summarize_urls(urls, api_key=api_key_input if api_key_input else None)
+                client = LLMClient(api_key=api_key_input if api_key_input else None)
+                if st.session_state.selected_model:
+                    client.model = st.session_state.selected_model
 
-                # Ergebnisse anzeigen
+                results = summarize_urls(urls, client=client)
+
                 for res in results:
                     with st.expander(f"**{res.get('title', res['url'])}**", expanded=True):
                         if res["status"] == "success":
@@ -91,16 +110,13 @@ if start_button and url_input:
                             if res.get("funding"):
                                 st.caption(f"💰 Förderung: {res['funding']}")
                         else:
-                            st.error(f"Fehler bei {res['url']}: {res.get('error', 'Unbekannter Fehler')}")
+                            st.error(f"Fehler: {res.get('error', 'Unbekannter Fehler')}")
 
             except KIConnectError as e:
                 st.error(f"API-Fehler: {e}")
             except Exception as e:
                 st.exception(e)
-                st.error("Ein unerwarteter Fehler ist aufgetreten. Details siehe oben.")
+                st.error("Ein unerwarteter Fehler ist aufgetreten.")
 
 elif start_button:
     st.warning("Bitte URLs eingeben.")
-
-st.sidebar.markdown("---")
-st.sidebar.caption("Beta-Newsletter v0.2.1")
