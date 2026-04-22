@@ -1,5 +1,5 @@
 """
-Web-Scraper mit optimierter Titel-Extraktion für BMFTR/BMBF-Ausschreibungen.
+Web-Scraper mit optimierter Titel-Extraktion.
 """
 
 import logging
@@ -49,17 +49,17 @@ def fetch_html(url: str, timeout: int = 30) -> Optional[str]:
         return None
 
 
-def extract_title(html: str) -> str:
-    """Extrahiert den Ausschreibungstitel – optimiert für BMFTR/BMBF."""
+def extract_title_from_html(html: str) -> Optional[str]:
+    """Extrahiert den Ausschreibungstitel aus HTML."""
     soup = BeautifulSoup(html, "html.parser")
 
-    # 1. h1 mit Klasse "title" oder "headline"
-    for h1 in soup.find_all("h1", class_=re.compile(r"title|headline", re.I)):
+    # 1. h1 mit Klasse "title", "headline", "bekanntmachung"
+    for h1 in soup.find_all("h1", class_=re.compile(r"title|headline|bekanntmachung", re.I)):
         text = h1.get_text(strip=True)
         if len(text) > 20:
             return text
 
-    # 2. beliebiges h1 mit relevantem Inhalt
+    # 2. erstes h1 mit relevantem Inhalt
     for h1 in soup.find_all("h1"):
         text = h1.get_text(strip=True)
         if len(text) > 30 and any(w in text.lower() for w in ["richtlinie", "bekanntmachung", "förder"]):
@@ -78,7 +78,7 @@ def extract_title(html: str) -> str:
             if len(line) > 30:
                 return line.strip()
 
-    # 5. Fallback: HTML-Title (bereinigt)
+    # 5. HTML-Title (bereinigt)
     if soup.title and soup.title.string:
         title = soup.title.string.strip()
         title = re.sub(r"^Homepage\s*[-–]\s*", "", title)
@@ -86,7 +86,7 @@ def extract_title(html: str) -> str:
         if len(title) > 20:
             return title
 
-    return "Keine Angabe"
+    return None
 
 
 def clean_html(html: str) -> str:
@@ -111,7 +111,7 @@ def scrape_url(url: str) -> Dict[str, Any]:
         return result
 
     try:
-        result["title"] = extract_title(html)
+        result["title"] = extract_title_from_html(html)  # kann None sein
         result["text"] = clean_html(html)
         if len(result["text"]) < 200:
             result["error"] = "Zu wenig Textinhalt"
