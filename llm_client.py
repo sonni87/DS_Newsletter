@@ -17,13 +17,9 @@ class KIConnectError(Exception):
     pass
 
 
-OllamaError = KIConnectError
-
-
 class LLMClient:
     """Client für die KI:connect LLM API (OpenAI-kompatibler Endpunkt)."""
 
-    # Bekannte verfügbare Modelle (Fallback, falls API-Abruf fehlschlägt)
     AVAILABLE_MODELS = [
         "gpt-oss-120b",
         "mistral-small-3.2-24b-instruct-2506",
@@ -31,41 +27,26 @@ class LLMClient:
     ]
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        """
-        Initialisiert den Client. Der API-Key wird erst bei Bedarf geladen.
-
-        Args:
-            api_key: API-Schlüssel (wenn None, wird aus Umgebungsvariable/Secrets gelesen)
-            base_url: Basis-URL der API (wenn None, wird Standard verwendet)
-        """
         self._api_key = api_key
         self.base_url = base_url or os.environ.get(
             "KICONNECT_BASE_URL", "https://chat.kiconnect.nrw/api"
         ).rstrip("/")
-        # Standardmodell: Erstes aus der Liste
         self.model = os.environ.get("KICONNECT_MODEL", self.AVAILABLE_MODELS[0])
         self.timeout = int(os.environ.get("KICONNECT_TIMEOUT", "60"))
 
     def _get_api_key(self) -> str:
-        """Liest API-Key aus Umgebungsvariable oder Streamlit-Secrets."""
         if self._api_key:
             return self._api_key
-
         try:
             import streamlit as st
             if hasattr(st, "secrets") and "KICONNECT_API_KEY" in st.secrets:
                 return st.secrets["KICONNECT_API_KEY"]
         except (ImportError, AttributeError):
             pass
-
         key = os.environ.get("KICONNECT_API_KEY")
         if key:
             return key
-
-        raise KIConnectError(
-            "KICONNECT_API_KEY nicht gefunden. "
-            "Bitte in der Seitenleiste eingeben oder als Umgebungsvariable setzen."
-        )
+        raise KIConnectError("KICONNECT_API_KEY nicht gefunden.")
 
     def _ensure_api_key(self) -> str:
         if not self._api_key:
@@ -73,28 +54,17 @@ class LLMClient:
         return self._api_key
 
     def list_models(self) -> List[str]:
-        """
-        Ruft die Liste der verfügbaren Modelle von der API ab.
-        Falls fehlschlägt, wird Fallback-Liste zurückgegeben.
-        """
         api_key = self._ensure_api_key()
         headers = {"Authorization": f"Bearer {api_key}"}
-
         try:
-            response = requests.get(
-                f"{self.base_url}/v1/models",
-                headers=headers,
-                timeout=10
-            )
+            response = requests.get(f"{self.base_url}/v1/models", headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
             models = [m.get("id", "") for m in data.get("data", [])]
             if models:
-                logger.info(f"Verfügbare Modelle: {models}")
                 return models
         except Exception as e:
-            logger.warning(f"Konnte Modellliste nicht abrufen: {e}")
-
+            logger.warning(f"Modellliste nicht abrufbar: {e}")
         return self.AVAILABLE_MODELS
 
     def check_connection(self) -> bool:
@@ -106,10 +76,8 @@ class LLMClient:
                 timeout=10
             )
             response.raise_for_status()
-            logger.info("KI:connect API-Verbindung erfolgreich.")
             return True
-        except Exception as e:
-            logger.error(f"Verbindungstest fehlgeschlagen: {e}")
+        except Exception:
             return False
 
     def generate(self, prompt: str, system_prompt: Optional[str] = None,
@@ -128,10 +96,7 @@ class LLMClient:
             "stream": False
         }
 
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
         try:
             response = requests.post(
@@ -143,21 +108,5 @@ class LLMClient:
             response.raise_for_status()
             data = response.json()
             return data["choices"][0]["message"]["content"]
-
-        except requests.exceptions.Timeout:
-            raise KIConnectError(f"Timeout nach {self.timeout}s")
-        except requests.exceptions.HTTPError as e:
-            error_detail = ""
-            try:
-                error_detail = response.json()
-            except:
-                error_detail = response.text
-            raise KIConnectError(f"HTTP {response.status_code}: {error_detail}")
         except Exception as e:
-            raise KIConnectError(f"Fehler: {e}")
-
-
-def generate_summary(prompt: str, client: Optional[LLMClient] = None) -> str:
-    if client is None:
-        client = LLMClient()
-    return client.generate(prompt)
+            raise KIConnectError(f"API-Fehler: {e}")
