@@ -1,59 +1,56 @@
+"""
+Kernfunktion – generiert Ausgabe im D7-Newsletter-Format.
+"""
+
 import logging
 from typing import List, Dict, Any, Optional
+
 from scraper import scrape_url
-from extractors import extract_deadline, extract_funding, extract_institution
+from extractors import (
+    extract_deadline, extract_funding, extract_institution,
+    extract_aim, extract_target_group, extract_duration
+)
 from llm_client import LLMClient, KIConnectError
 
 logger = logging.getLogger(__name__)
 
-PROMPT = """
-Analysiere den Text einer Förderausschreibung. Extrahiere präzise:
 
-1. Ziel der Förderung (max. 2 Sätze, was wird gefördert?)
-2. Zielgruppe (wer ist antragsberechtigt?)
-3. Dauer der Förderung (z.B. "bis zu 3 Jahre")
-4. Internes Verfahren (Hinweise auf rechtsverbindliche Unterschrift oder interne Frist. Wenn nichts erwähnt, schreibe "Keine Angabe")
-
-Wichtig: Nenne KEINE Gesamtbudgets. Antworte nur mit:
-1: <Antwort>
-2: <Antwort>
-3: <Antwort>
-4: <Antwort>
-
-TEXT:
-{text}
-"""
-
-
-def _parse_llm(output: str) -> Dict[str, str]:
-    res = {"ziel": "Keine Angabe", "zielgruppe": "Keine Angabe",
-           "dauer": "Keine Angabe", "intern": "Keine Angabe"}
-    for line in output.split("\n"):
-        line = line.strip()
-        if line.startswith("1:"): res["ziel"] = line[2:].strip()
-        elif line.startswith("2:"): res["zielgruppe"] = line[2:].strip()
-        elif line.startswith("3:"): res["dauer"] = line[2:].strip()
-        elif line.startswith("4:"): res["intern"] = line[2:].strip()
-    return res
+def _format_d7(title: str, institution: str, aim: str, target: str,
+               duration: str, funding: str, deadline: str, url: str,
+               internal: bool = False) -> str:
+    """Formatiert nach D7-Newsletter-Standard."""
+    lines = [f"## {title}\n"]
+    if aim:
+        lines.append(f"Aim {aim}\n")
+    if target:
+        lines.append(f"Target group {target}\n")
+    if duration:
+        lines.append(f"Duration {duration}\n")
+    if funding:
+        lines.append(f"Funding {funding}\n")
+    if deadline:
+        lines.append(f"Deadline {deadline}\n")
+    lines.append(f"Further information website\n")
+    if internal:
+        lines.append("\nINTERNAL PROCEDURE: Please note that the application form must be signed "
+                     "by an authorised representative of the university (in German: \"rechtsverbindliche Unterschrift\"). "
+                     "Therefore, please contact Department 73 - National Funding as soon as you decide to write a proposal "
+                     "(a73_Antrag@verw.uni-koeln.de) to arrange an appointment for support in the preparation of the proposal.\n")
+    lines.append("\n---")
+    return "\n".join(lines)
 
 
-def _format(title, inst, deadline, funding, url, llm):
-    out = f"**Titel der Ausschreibung:** {title}\n"
-    out += f"**Förderinstitution:** {inst or 'Keine Angabe'}\n"
-    out += f"**Ziel / Aim:** {llm['ziel']}\n"
-    out += f"**Zielgruppe / Target group:** {llm['zielgruppe']}\n"
-    out += f"**Dauer / Duration:** {llm['dauer']}\n"
-    out += f"**Förderhöhe / Funding:** {funding or 'Keine Angabe'}\n"
-    out += f"**Fristende / Deadline:** {deadline or 'Keine Angabe'}\n"
-    out += f"**Weitere Informationen / Further information:** {url}\n"
-    if llm["intern"] != "Keine Angabe":
-        out += f"**INTERNES VERFAHREN:** {llm['intern']}\n"
-    return out
+def _needs_internal_procedure(institution: str) -> bool:
+    if not institution:
+        return False
+    inst_lower = institution.lower()
+    return any(x in inst_lower for x in ["bmbf", "bmftr", "bmwe", "bmwk", "bundesministerium"])
 
 
 def summarize_urls(urls: List[str], client: Optional[LLMClient] = None) -> List[Dict[str, Any]]:
     if client is None:
         client = LLMClient()
+
     try:
         client._ensure_api_key()
     except KIConnectError as e:
@@ -75,7 +72,7 @@ def summarize_urls(urls: List[str], client: Optional[LLMClient] = None) -> List[
             continue
 
         text = scraped["text"]
-        title = scraped["title"] or "Keine Angabe"
+        title = scraped["title"]
         if len(text) < 200:
             result["error"] = "Zu wenig Textinhalt"
             results.append(result)
@@ -84,18 +81,20 @@ def summarize_urls(urls: List[str], client: Optional[LLMClient] = None) -> List[
         deadline = extract_deadline(text) or "Keine Angabe"
         funding = extract_funding(text) or "Keine Angabe"
         institution = extract_institution(text) or "Keine Angabe"
+        aim = extract_aim(text) or "Keine Angabe"
+        target = extract_target_group(text) or "Keine Angabe"
+        duration = extract_duration(text) or "Keine Angabe"
 
         result["deadline"] = deadline
         result["funding"] = funding
         result["institution"] = institution
 
-        try:
-            llm_out = client.generate(PROMPT.format(text=text[:8000]), temperature=0.1, max_tokens=500)
-            llm_data = _parse_llm(llm_out)
-            result["summary"] = _format(title, institution, deadline, funding, url, llm_data)
-            result["status"] = "success"
-        except Exception as e:
-            result["error"] = f"LLM-Fehler: {e}"
+        internal = _needs_internal_procedure(institution)
 
+        result["summary"] = _format_d7(
+            title, institution, aim, target, duration, funding, deadline, url, internal
+        )
+        result["status"] = "success"
         results.append(result)
+
     return results
