@@ -282,7 +282,7 @@ with col_btn2:
     summarize_clicked = st.button(
         "🚀 Ausschreibung zusammenfassen",
         use_container_width=True,
-        type="primary"  # Damit der rote CSS-Selector greift
+        type="primary"
     )
 
 if summarize_clicked:
@@ -302,7 +302,6 @@ if summarize_clicked:
                 response = client.generate(final_prompt, temperature=0.1, max_tokens=2048)
                 st.session_state.response = response
                 st.session_state.translated_response = ""
-                # Kein automatisches Leeren – nur über "Textfeld leeren"-Button
             except KIConnectError as e:
                 st.error(f"API-Fehler: {e}")
             except Exception as e:
@@ -330,45 +329,30 @@ if st.session_state.response:
             mime="text/plain"
         )
 
-# --- Übersetzungsbereich ---
-st.divider()
-st.subheader("🌐 Übersetzung (Deutsch → Englisch)")
-st.markdown("Füge hier einen deutschen Text ein, um ihn ins Englische übersetzen zu lassen.")
-
-col_trans1, col_trans2 = st.columns([3, 1])
-with col_trans1:
-    text_to_translate = st.text_area(
-        "Zu übersetzender Text",
-        height=150,
-        placeholder="Deutschen Text hier einfügen...",
-        key="translate_input"
-    )
-with col_trans2:
-    st.write("")
-    st.write("")
-    translate_btn = st.button("🔄 Übersetzen")
-
-if translate_btn and text_to_translate.strip():
-    with st.spinner("Übersetze ..."):
-        try:
-            client = LLMClient(api_key=api_key_input if api_key_input else None)
-            if st.session_state.selected_model:
-                client.model = st.session_state.selected_model
-            translation_prompt = f"""Übersetze den folgenden deutschen Text präzise und professionell ins Englische.
+    # Button direkt unter der deutschen Antwort – kein extra Textfeld nötig
+    if st.button("🌐 Ins Englische übersetzen"):
+        with st.spinner("Übersetze ..."):
+            try:
+                client = LLMClient(api_key=api_key_input if api_key_input else None)
+                if st.session_state.selected_model:
+                    client.model = st.session_state.selected_model
+                translation_prompt = f"""Übersetze den folgenden deutschen Text präzise und professionell ins Englische.
 WICHTIG: Behalte die **exakte Formatierung** bei, insbesondere **Fettdruck** (z.B. `**Förderung:**` → `**Funding:**`).
 Die Feldbezeichnungen MÜSSEN fett sein.
 Antworte NUR mit der Übersetzung, ohne zusätzliche Erklärungen.
 
 Deutscher Text:
-{text_to_translate}
+{st.session_state.response}
 
 Englische Übersetzung:"""
-            translated = client.generate(translation_prompt, temperature=0.1, max_tokens=2048)
-            st.session_state.translated_response = translated
-        except Exception as e:
-            st.error(f"Übersetzungsfehler: {e}")
+                translated = client.generate(translation_prompt, temperature=0.1, max_tokens=2048)
+                st.session_state.translated_response = translated
+            except Exception as e:
+                st.error(f"Übersetzungsfehler: {e}")
 
+# Englische Übersetzung anzeigen (falls vorhanden)
 if st.session_state.translated_response:
+    st.divider()
     st.subheader("📋 Übersetzung (Englisch)")
     st.markdown(st.session_state.translated_response)
     col_t1, col_t2 = st.columns(2)
