@@ -256,16 +256,25 @@ with col2:
         if st.button("🧹 Textfeld leeren"):
             st.session_state.text_area_key += 1
             st.session_state.user_text = ""
+            st.session_state.url_input = ""
             st.rerun()
 
     user_text = st.text_area(
         "Volltext der Ausschreibung einfügen",
         value="",
-        height=400,
+        height=350,
         placeholder="Den kompletten Ausschreibungstext hier einfügen...",
         key=f"user_text_input_{st.session_state.text_area_key}"
     )
     st.session_state.user_text = user_text
+
+    url_input = st.text_input(
+        "🔗 Website / URL des Ausschreibungstextes",
+        value=st.session_state.get("url_input", ""),
+        placeholder="https://...",
+        key=f"url_input_{st.session_state.text_area_key}"
+    )
+    st.session_state.url_input = url_input
 
 # --- Großer roter Button zentriert ---
 col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
@@ -286,17 +295,18 @@ if summarize_clicked:
                 if st.session_state.selected_model:
                     client.model = st.session_state.selected_model
                 final_prompt = prompt_template.replace("{text}", st.session_state.user_text)
+                # URL in den Prompt injizieren, damit sie in "Further information" landet
+                url = st.session_state.get("url_input", "").strip()
+                if url:
+                    final_prompt += f"\n\nDie URL der Ausschreibung lautet: {url}\nTrage diese URL exakt so unter 'Further information' ein."
                 response = client.generate(final_prompt, temperature=0.1, max_tokens=2048)
                 st.session_state.response = response
                 st.session_state.translated_response = ""
-                # Textfeld nach erfolgreicher Analyse leeren via Key-Wechsel
-                st.session_state.text_area_key += 1
-                st.session_state.user_text = ""
+                # Kein automatisches Leeren – nur über "Textfeld leeren"-Button
             except KIConnectError as e:
                 st.error(f"API-Fehler: {e}")
             except Exception as e:
                 st.exception(e)
-        st.rerun()
 
 # Ergebnis anzeigen
 if st.session_state.response:
