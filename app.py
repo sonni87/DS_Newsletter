@@ -83,13 +83,9 @@ if "selected_model" not in st.session_state:
     st.session_state.selected_model = None
 if "user_text" not in st.session_state:
     st.session_state.user_text = ""
-if "clear_text" not in st.session_state:
-    st.session_state.clear_text = False
-
-# Wenn clear_text gesetzt, Text leeren und Flag zurücksetzen
-if st.session_state.clear_text:
-    st.session_state.user_text = ""
-    st.session_state.clear_text = False
+# text_area_key wird hochgezählt, um das Widget neu zu erzeugen (= leeren)
+if "text_area_key" not in st.session_state:
+    st.session_state.text_area_key = 0
 
 # Sidebar
 with st.sidebar:
@@ -130,53 +126,69 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Beta-Newsletter – Prompt Client v1.1")
 
-# ========== VERBESSERTER DEFAULT PROMPT ==========
-default_prompt = """Du bist Redakteur eines Fördernewsletters für Forschende und Verwaltungsmitarbeiter
-an deutschen Hochschulen und Forschungseinrichtungen. Deine Aufgabe ist es,
-Förderausschreibungen präzise und verständlich zusammenzufassen, damit die Leser
-schnell einschätzen können, ob eine Ausschreibung für sie relevant ist.
+# ========== DEFAULT PROMPT (an echten Newslettereinträgen orientiert) ==========
+default_prompt = """Du bist Redakteur des Fördernewsletters der Universität zu Köln (Division 7 Research
+Management). Du fasst Förderausschreibungen so zusammen, wie sie im Newsletter erscheinen:
+kompakt, sachlich, ohne Einleitungssätze oder Marketingsprache, direkt auf die
+strukturierten Felder beschränkt.
 
-Analysiere die folgende Förderausschreibung und erstelle eine strukturierte
-Zusammenfassung. Halte dich exakt an die vorgegebenen Felder und gib ausschließlich
-die strukturierten Felder aus – ohne Einleitung, Kommentar oder abschließende
-Bemerkungen.
+Analysiere die folgende Förderausschreibung und gib NUR die strukturierten Felder aus –
+keine Einleitung, kein Kommentar, keine abschließenden Bemerkungen.
 
-Regeln:
-- Ist eine Information nicht im Text enthalten, schreibe "Keine Angabe".
-- Bei der Förderhöhe gilt IMMER: Nenne die maximale Fördersumme PRO PROJEKT oder PRO ANTRAG,
-  NICHT das Gesamtbudget der Förderlinie oder das Gesamtvolumen des Programms.
-  Beispiel: "bis zu 500.000 € pro Projekt (Gesamtprogrammvolumen: 50 Mio. €)" – trenne
-  beides klar. Gibt es Varianten (z.B. verschiedene Projekttypen), nenne alle Varianten
-  mit kurzem Kontext.
-- Formuliere sachlich und präzise, vermeide Marketingsprache aus der Ausschreibung.
-- Verwende deutsche Fachbegriffe, die im Hochschul- und Forschungskontext üblich sind.
+REGELN:
+
+1. SPRACHE: Formuliere auf Englisch. Ausnahme: Die Ausschreibung ist ausschließlich auf
+   Deutsch verfügbar und kann nur auf Deutsch beantragt werden – dann auf Deutsch mit
+   deutschen Feldbezeichnungen (Förderung / Zielgruppe / Dauer / Förderhöhe / Fristende
+   / Website).
+
+2. FÖRDERHÖHE – KRITISCH:
+   Nenne IMMER die Fördersumme PRO PROJEKT oder PRO ANTRAG, nie das Gesamtbudget der
+   Förderlinie. Zeige immer den Bezugspunkt:
+   - "for each German partner" / "for all German partners" / "per project"
+   - Förderlinien/Phasen separat: z.B. "up to € 600,000 (funding line A) | up to
+     € 1.2 million (funding line B)" oder "exploratory phase: € 100,000 | feasibility
+     phase: € 500,000 (+overhead)"
+   - Hochschulen: Förderquote ergänzen wenn relevant, z.B.
+     "up to 100% of eligible project-related expenses + 20% project lump sum for universities"
+   - Ist nur das Gesamtprogrammbudget genannt und keine Einzelprojektförderung:
+     schreibe "not specified per project"
+
+3. ZIELGRUPPE: Präzise – Antragstyp (Einzel-/Verbundprojekt, internationale Kooperation)
+   UND Antragsteller (Institutionen, Karrierestufen, Mindestpartnerzahl, Länder).
+   Orientiere dich an Newsletter-Einträgen wie: "transnational pre-competitive R&D
+   projects with at least three partners from three participating countries" – nicht
+   nur allgemein "Forschende".
+
+4. FRISTENDE: Datum + Verfahrensart in Klammern.
+   Beispiel: "5 December 2025 (submission of a project outline, two-stage procedure)"
+   Bei dauerhaft offenen Calls: "continuously open"
+
+5. FEHLENDE INFORMATIONEN: "not specified" (EN) / "Keine Angabe" (DE)
+
+6. EIGENANTEIL: Nur wenn explizit gefordert als eigenes Feld ergänzen, sonst weglassen.
 
 <ausschreibung>
 {text}
 </ausschreibung>
 
-Erstelle die Zusammenfassung in folgendem Format:
+Ausgabe NUR in diesem Format (keine zusätzlichen Felder, keine Umsortierung):
 
-**Titel:** (Titel oder Name der Ausschreibung)
+**Title:** (Name der Ausschreibung)
 
-**Förderung:** (4–6 Sätze: Was wird gefördert? Was ist das Ziel des Programms?
-Welche Kosten sind förderfähig?)
+**Aim:** (3–5 sachliche Sätze: Was wird gefördert? Ziel? Thematische Schwerpunkte oder
+Förderbereiche? Direkt zur Sache – kein "The programme aims to" als Einstieg.)
 
-**Zielgruppe:** (Wer ist antragsberechtigt? Welche Einrichtungen oder Personen
-können einen Antrag stellen?)
+**Target group:** (Antragstyp + antragsberechtigt Institutionen/Personen + relevante
+Einschränkungen, kompakt in einem Satz oder präzisen Stichwörtern)
 
-**Dauer:** (Projektlaufzeit)
+**Duration:** (Projektlaufzeit; bei Phasen alle nennen)
 
-**Förderhöhe:** (Maximale Fördersumme ODER Förderquote PRO PROJEKT/VORHABEN –
-NICHT das Gesamtbudget der Förderlinie. Falls nur das Gesamtbudget angegeben ist,
-schreibe "Keine Angabe zur Einzelprojektförderung (Gesamtprogrammvolumen: X)".)
+**Funding:** (Fördersumme PRO PROJEKT mit Bezugspunkt; Phasen/Varianten alle auflisten)
 
-**Eigenanteil:** (Wird von antragstellenden Einrichtungen ein Eigenanteil gefordert?
-Wenn ja: Höhe oder Form des Eigenanteils)
+**Deadline:** (Datum + Verfahrensart in Klammern)
 
-**Fristende:** (Einreichungsfrist)
-
-**Website:** (URL der Ausschreibung)"""
+**Further information:** (URL oder "website of [Fördergeber]")"""
 
 # ========== ZWEI SPALTEN: PROMPT | AUSSCHREIBUNGSTEXT ==========
 col1, col2 = st.columns(2)
@@ -197,15 +209,16 @@ with col2:
     with col2_btn:
         st.write("")  # vertikales Alignment
         if st.button("🧹 Textfeld leeren"):
-            st.session_state.clear_text = True
+            st.session_state.text_area_key += 1
+            st.session_state.user_text = ""
             st.rerun()
 
     user_text = st.text_area(
         "Volltext der Ausschreibung einfügen",
-        value=st.session_state.user_text,
+        value="",
         height=400,
         placeholder="Den kompletten Ausschreibungstext hier einfügen...",
-        key="user_text_input"
+        key=f"user_text_input_{st.session_state.text_area_key}"
     )
     st.session_state.user_text = user_text
 
@@ -231,15 +244,14 @@ if summarize_clicked:
                 response = client.generate(final_prompt, temperature=0.1, max_tokens=2048)
                 st.session_state.response = response
                 st.session_state.translated_response = ""
-                # Textfeld nach erfolgreicher Analyse leeren
-                st.session_state.clear_text = True
+                # Textfeld nach erfolgreicher Analyse leeren via Key-Wechsel
+                st.session_state.text_area_key += 1
+                st.session_state.user_text = ""
             except KIConnectError as e:
                 st.error(f"API-Fehler: {e}")
             except Exception as e:
                 st.exception(e)
-        # Rerun nach Analyse, damit das Textfeld geleert wird
-        if st.session_state.clear_text:
-            st.rerun()
+        st.rerun()
 
 # Ergebnis anzeigen
 if st.session_state.response:
