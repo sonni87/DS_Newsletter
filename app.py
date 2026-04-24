@@ -36,8 +36,32 @@ st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
-html, body, [class*="css"], .stMarkdown, .stTextArea textarea,
-.stTextInput input, .stSelectbox, .stButton button {{
+/* Global font override – alle Elemente */
+:root {{
+    --font-sans-serif: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}}
+*, html, body,
+[class*="css"],
+[class*="st-"],
+.stApp,
+.stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+.stTextArea textarea,
+.stTextInput input, .stTextInput label,
+.stSelectbox, .stSelectbox label, .stSelectbox div,
+.stMultiSelect, .stMultiSelect label,
+.stButton button,
+.stDownloadButton button,
+.stTabs [data-baseweb="tab"],
+.stCaption, .stCaption p,
+section[data-testid="stSidebar"],
+section[data-testid="stSidebar"] *,
+[data-testid="stMetric"],
+[data-testid="stMetric"] *,
+[data-testid="stMetricLabel"],
+[data-testid="stMetricValue"],
+[data-testid="stExpander"] *,
+h1, h2, h3, h4, h5, h6,
+p, span, div, label, input, textarea, button, a, li, td, th, caption {{
     font-family: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }}
 
@@ -146,6 +170,9 @@ div[data-testid="stButton"]:has(button[kind="primary"]) > button:hover {{
 .stTextArea textarea:focus, .stTextInput input:focus {{
     border-color: {UZK_TUERKIS} !important;
     box-shadow: 0 0 0 2px rgba(0,157,204,0.15) !important;
+}}
+.stTextArea textarea::placeholder, .stTextInput input::placeholder {{
+    font-family: 'Albert Sans', sans-serif !important;
 }}
 
 /* Links */
@@ -511,13 +538,21 @@ with st.sidebar:
     if st.session_state.available_models:
         st.divider()
         st.subheader("🤖 Modell")
-        if st.session_state.selected_model not in st.session_state.available_models:
-            st.session_state.selected_model = st.session_state.available_models[0]
-        st.session_state.selected_model = st.selectbox(
+        models = st.session_state.available_models
+
+        # Initialer Default: erstes Modell (= empfohlenes, da sortiert)
+        if "model_select" not in st.session_state:
+            st.session_state.model_select = models[0]
+        elif st.session_state.model_select not in models:
+            st.session_state.model_select = models[0]
+
+        st.selectbox(
             "Modell wählen:",
-            options=st.session_state.available_models,
-            index=st.session_state.available_models.index(st.session_state.selected_model)
+            options=models,
+            key="model_select",
         )
+        st.session_state.selected_model = st.session_state.model_select
+
         # Empfehlung anzeigen
         sel = (st.session_state.selected_model or "").lower()
         if "119b" in sel:
