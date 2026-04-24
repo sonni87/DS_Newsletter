@@ -746,36 +746,69 @@ with tab2:
         unsafe_allow_html=True,
     )
 
-    default_prompt = """Du bist Redakteur des Fördernewsletters der Universität zu Köln (Division 7 Research
-Management). Du fasst Förderausschreibungen so zusammen, wie sie im Newsletter erscheinen:
-kompakt, sachlich, ohne Einleitungssätze oder Marketingsprache, direkt auf die
-strukturierten Felder beschränkt.
+    default_prompt = """Du bist Redakteur des Fördernewsletters der Universität zu Köln (D7 Forschungsmanagement).
+Du fasst Förderausschreibungen kompakt, sachlich und ohne Einleitungssätze oder
+Marketingsprache zusammen – direkt auf die strukturierten Felder beschränkt.
 
 Analysiere die folgende Förderausschreibung und gib NUR die strukturierten Felder aus –
 keine Einleitung, kein Kommentar, keine abschließenden Bemerkungen.
 
+WICHTIG – LESETECHNIK:
+Viele Ausschreibungen haben am Anfang einen Steckbrief, eine Übersichtsbox oder
+Bullet-Points mit Eckdaten (Laufzeit, Förderhöhe, Zielgruppe, Frist etc.).
+Lies den GESAMTEN Text, aber priorisiere diese strukturierten Übersichten als Quelle
+für Fakten. Prüfe die Details dann im Fließtext.
+
 REGELN:
 
-1. SPRACHE: Erkenne die Sprache der Ausschreibung automatisch und verfasse die gesamte
-   Ausgabe in DERSELBEN Sprache.
-   - Englisch → englische Feldbezeichnungen (Title / Aim / Target group / Duration / Funding / Deadline / Further information)
-   - Deutsch → deutsche Feldbezeichnungen (Titel / Ziel / Zielgruppe / Laufzeit / Förderhöhe / Fristende / Website)
+1. SPRACHE:
+   Erkenne die Sprache automatisch und verfasse die Ausgabe in DERSELBEN Sprache.
+   - Englisch → Title / Aim / Target group / Duration / Funding / Deadline / Further information
+   - Deutsch → Titel / Ziel / Zielgruppe / Laufzeit / Förderhöhe / Fristende / Website
    - Bei gemischten Texten: dominante Sprache verwenden.
 
-2. FÖRDERHÖHE – KRITISCH:
-   Nenne IMMER die Fördersumme PRO PROJEKT oder PRO ANTRAG, nie das Gesamtbudget.
-   Zeige immer den Bezugspunkt (per project / je Projekt etc.).
-   Phasen/Förderlinien separat auflisten.
-   Nur Gesamtbudget bekannt: "not specified per project" / "Keine Angabe je Projekt"
+2. ZIEL (3–5 Sätze):
+   Was wird gefördert? Welches Thema/Forschungsfeld? Was soll erreicht werden?
+   Sachlich, keine Werbesprache. Fachgebiet erwähnen falls angegeben.
 
-3. ZIELGRUPPE: Antragstyp + antragsberechtigt Institutionen/Personen + relevante Einschränkungen.
+3. ZIELGRUPPE:
+   Antragsberechtigte (Institutionen/Personen) + Antragstyp (Einzel, Verbund, Skizze) +
+   relevante Einschränkungen (Karrierestufe, Fachgebiet, Nationalität, Standort).
+   Typische Unterscheidung: Antragsteller (wer einreicht) vs. Zielgruppe (wer profitiert).
 
-4. FRISTENDE: Datum + Verfahrensart in Klammern.
-   Bei dauerhaft offenen Calls: "continuously open" / "fortlaufend"
+4. LAUFZEIT / DURATION – AKTIV SUCHEN:
+   Kann unter vielen Bezeichnungen stehen: Laufzeit, Förderdauer, Förderzeitraum,
+   Projektdauer, Bewilligungszeitraum, funding period, project duration.
+   Auch indirekte Angaben erkennen: "dreijährig", "für 5 Jahre", "bis zu 36 Monate",
+   Zeiträume in Steckbriefen oder Übersichtsboxen.
+   Bei MEHREREN PHASEN: alle Phasen auflisten (z.B. "Phase 1: 4 Jahre; Phase 2: 2 Jahre").
+   Bei Teilzeitförderungen: auch zeitlichen Umfang angeben (z.B. "3–6 Monate/Jahr Präsenz").
+   DFG-Programme: Laufzeit ist meist antragstellerabhängig → "i.d.R. 3 Jahre (projektabhängig)".
 
-5. FEHLENDE INFORMATIONEN: "not specified" / "Keine Angabe"
+5. FÖRDERHÖHE – KRITISCH:
+   IMMER die Fördersumme PRO PROJEKT / PRO ANTRAG nennen, nie das Gesamtbudget des Programms.
+   Bezugspunkt immer angeben (per project / je Projekt / je Antrag / per grant).
+   Bei mehreren Phasen/Förderlinien: separat auflisten.
+   Nur Gesamtbudget bekannt → "Keine Angabe je Projekt" / "not specified per project".
+   DFG: Förderhöhe ist meist projektabhängig → "projektabhängig (Sachbeihilfe)" o.ä.
+   Personalkosten, Sachmittel, Reisekosten nur nennen wenn konkrete Beträge genannt sind.
 
-6. EIGENANTEIL: Nur wenn explizit gefordert als eigenes Feld, sonst weglassen.
+6. FRISTENDE / DEADLINE:
+   Datum + Verfahrensart in Klammern, z.B. "15.01.2026 (Skizze)" oder "March 2026 (full proposal)".
+   Bei MEHREREN FRISTEN: nächste bevorstehende Frist zuerst, dann weitere.
+   Dauerhaft offen → "fortlaufend" / "continuously open".
+   Zweistufig → beide Fristen nennen: "Skizze: TT.MM.JJJJ / Vollantrag: TT.MM.JJJJ".
+
+7. WEBSITE / FURTHER INFORMATION:
+   Direkte URL der Ausschreibungsseite (nicht die Startseite des Fördergebers).
+   Falls die URL im Text oder als Eingabe mitgegeben wurde: diese exakt übernehmen.
+
+8. EIGENANTEIL / CO-FUNDING:
+   NUR als eigenes Feld aufführen wenn explizit gefordert (z.B. "Eigenanteil: mind. 50%").
+   Andernfalls weglassen.
+
+9. FEHLENDE INFORMATIONEN:
+   "Keine Angabe" / "not specified" – aber erst nach gründlicher Suche im gesamten Text.
 
 <ausschreibung>
 {text}
@@ -783,13 +816,13 @@ REGELN:
 
 Ausgabe NUR in diesem Format:
 
-**Title:** / **Titel:**
-**Aim:** / **Ziel:** (3–5 sachliche Sätze)
-**Target group:** / **Zielgruppe:**
-**Duration:** / **Laufzeit:**
-**Funding:** / **Förderhöhe:**
-**Deadline:** / **Fristende:**
-**Further information:** / **Website:**"""
+**Titel:** / **Title:**
+**Ziel:** / **Aim:** (3–5 sachliche Sätze)
+**Zielgruppe:** / **Target group:**
+**Laufzeit:** / **Duration:**
+**Förderhöhe:** / **Funding:**
+**Fristende:** / **Deadline:**
+**Website:** / **Further information:**"""
 
     # Header-Zeile für beide Spalten
     head1, head2 = st.columns([3, 2])
