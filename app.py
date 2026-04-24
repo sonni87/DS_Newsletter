@@ -36,6 +36,28 @@ a { color: #009DCC !important; }
 st.title("🤖 KI:connect – Prompt Client zur Zusammenfassung von Ausschreibungstexten")
 st.markdown("Gib deinen Prompt und den Ausschreibungstext ein. Die Antwort wird im Markdown‑Format ausgegeben und kann exportiert werden.")
 
+# --- Kontextfenster je Modell (in Tokens) ---
+MODEL_CONTEXT_WINDOWS = {
+    "mistral-small-3.2-24b-instruct-2506": 128_000,
+    "mistral-small-4-119b-2603":           128_000,
+    "gpt-oss-120b":                        128_000,
+    "mistral-small-3-2-24b-instruct-ki":   128_000,
+    "openai-gpt-oss-120b-ki":              128_000,
+    "e5-mistral-7b-instruct":               32_000,
+}
+DEFAULT_CONTEXT = 128_000  # Fallback falls Modell unbekannt
+
+
+def get_context_window(model_name: str) -> int:
+    if not model_name:
+        return DEFAULT_CONTEXT
+    # Partial-Match: Modellname kann Suffix enthalten
+    for key, val in MODEL_CONTEXT_WINDOWS.items():
+        if key in model_name.lower() or model_name.lower() in key:
+            return val
+    return DEFAULT_CONTEXT
+
+
 # --- Session State initialisieren ---
 defaults = {
     "response": "",
@@ -62,6 +84,11 @@ def update_token_stats(usage: dict):
     st.session_state.tokens_session_total      += usage.get("total_tokens", 0)
     st.session_state.last_usage = usage
     st.session_state.request_count += 1
+
+
+def fmt(n: int) -> str:
+    """Tausender-Trennzeichen mit Punkt (deutsche Schreibweise)."""
+    return f"{n:,}".replace(",", ".")
 
 
 # ========== SIDEBAR ==========
@@ -101,28 +128,49 @@ with st.sidebar:
 
     # --- Token-Anzeige ---
     st.divider()
-    st.subheader("🔢 Token-Verbrauch (Session)")
+    st.subheader("🔢 Token-Verbrauch")
+
     if st.session_state.request_count == 0:
         st.caption("Noch keine Anfragen in dieser Session.")
     else:
-        st.metric("Anfragen gesamt", st.session_state.request_count)
+        lu = st.session_state.last_usage
+        last_total = lu.get("total_tokens", 0) if lu else 0
+        last_prompt = lu.get("prompt_tokens", 0) if lu else 0
+        last_completion = lu.get("completion_tokens", 0) if lu else 0
+
+        ctx_limit = get_context_window(st.session_state.selected_model or "")
+        pct = min(last_total / ctx_limit, 1.0)
+
+        # Balken + Beschriftung wie bei UzKGPT
+        st.markdown("**Letzte Anfrage – Kontextfenster**")
+        st.progress(pct, text=f"{fmt(last_total)} / {fmt(ctx_limit)} Tokens")
+
+        # Ampel-Hinweis
+        if pct >= 0.9:
+            st.error("⚠️ Kontextfenster fast voll! Kürze den Eingabetext.")
+        elif pct >= 0.7:
+            st.warning("🟡 Kontextfenster zu 70 %+ ausgelastet.")
+
+        # Detail-Aufschlüsselung
+        with st.expander("Details letzte Anfrage"):
+            st.caption(
+                f"📨 Input:  {fmt(last_prompt)} Tokens\n\n"
+                f"📩 Output: {fmt(last_completion)} Tokens\n\n"
+                f"📊 Gesamt: {fmt(last_total)} Tokens"
+            )
+
+        st.divider()
+
+        # Session-Kumulation
+        st.markdown("**Session-Gesamt**")
+        st.metric("Anfragen", st.session_state.request_count)
         col_tok1, col_tok2 = st.columns(2)
         with col_tok1:
-            st.metric("Input", f"{st.session_state.tokens_session_prompt:,}".replace(",", "."))
+            st.metric("Input", fmt(st.session_state.tokens_session_prompt))
         with col_tok2:
-            st.metric("Output", f"{st.session_state.tokens_session_completion:,}".replace(",", "."))
-        st.metric(
-            "Tokens gesamt",
-            f"{st.session_state.tokens_session_total:,}".replace(",", ".")
-        )
-        if st.session_state.last_usage:
-            with st.expander("Letzte Anfrage"):
-                lu = st.session_state.last_usage
-                st.caption(
-                    f"Input: {lu.get('prompt_tokens', 0):,} | "
-                    f"Output: {lu.get('completion_tokens', 0):,} | "
-                    f"Gesamt: {lu.get('total_tokens', 0):,}".replace(",", ".")
-                )
+            st.metric("Output", fmt(st.session_state.tokens_session_completion))
+        st.metric("Tokens gesamt", fmt(st.session_state.tokens_session_total))
+
         if st.button("🗑️ Token-Zähler zurücksetzen"):
             st.session_state.tokens_session_prompt = 0
             st.session_state.tokens_session_completion = 0
@@ -171,7 +219,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.caption("Beta-Newsletter – Prompt Client v1.2")
+    st.caption("Beta-Newsletter – Prompt Client v1.3")
 
 # ========== DEFAULT PROMPT ==========
 default_prompt = """Du bist Redakteur des Fördernewsletters der Universität zu Köln (Division 7 Research
@@ -184,32 +232,32 @@ keine Einleitung, kein Kommentar, keine abschließenden Bemerkungen.
 
 REGELN:
 
-1. SPRACHE: Formuliere auf Englisch. Ausnahme: Die Ausschreibung ist ausschließlich auf
-   Deutsch verfügbar und kann nur auf Deutsch beantragt werden – dann auf Deutsch mit
-   deutschen Feldbezeichnungen (Förderung / Zielgruppe / Dauer / Förderhöhe / Fristende
-   / Website).
+1. SPRACHE: Erkenne die Sprache der Ausschreibung automatisch und verfasse die gesamte
+   Ausgabe in DERSELBEN Sprache.
+   - Ist die Ausschreibung auf Englisch → Ausgabe auf Englisch, englische Feldbezeichnungen
+     (Title / Aim / Target group / Duration / Funding / Deadline / Further information)
+   - Ist die Ausschreibung auf Deutsch → Ausgabe auf Deutsch, deutsche Feldbezeichnungen
+     (Titel / Ziel / Zielgruppe / Laufzeit / Förderhöhe / Fristende / Website)
+   - Bei gemischten Texten: Orientiere dich an der dominanten Sprache der Ausschreibung.
 
 2. FÖRDERHÖHE – KRITISCH:
    Nenne IMMER die Fördersumme PRO PROJEKT oder PRO ANTRAG, nie das Gesamtbudget der
    Förderlinie. Zeige immer den Bezugspunkt:
-   - "for each German partner" / "for all German partners" / "per project"
+   - "for each German partner" / "for all German partners" / "per project" (EN)
+   - "je deutschem Partner" / "je Projekt" (DE)
    - Förderlinien/Phasen separat: z.B. "up to € 600,000 (funding line A) | up to
-     € 1.2 million (funding line B)" oder "exploratory phase: € 100,000 | feasibility
-     phase: € 500,000 (+overhead)"
-   - Hochschulen: Förderquote ergänzen wenn relevant, z.B.
-     "up to 100% of eligible project-related expenses + 20% project lump sum for universities"
+     € 1.2 million (funding line B)" oder "Explorationsphase: 100.000 € | Machbarkeitsphase: 500.000 € (+Overhead)"
+   - Hochschulen: Förderquote ergänzen wenn relevant
    - Ist nur das Gesamtprogrammbudget genannt und keine Einzelprojektförderung:
-     schreibe "not specified per project"
+     "not specified per project" (EN) / "Keine Angabe je Projekt" (DE)
 
 3. ZIELGRUPPE: Präzise – Antragstyp (Einzel-/Verbundprojekt, internationale Kooperation)
    UND Antragsteller (Institutionen, Karrierestufen, Mindestpartnerzahl, Länder).
-   Orientiere dich an Newsletter-Einträgen wie: "transnational pre-competitive R&D
-   projects with at least three partners from three participating countries" – nicht
-   nur allgemein "Forschende".
 
 4. FRISTENDE: Datum + Verfahrensart in Klammern.
-   Beispiel: "5 December 2025 (submission of a project outline, two-stage procedure)"
-   Bei dauerhaft offenen Calls: "continuously open"
+   Beispiel EN: "5 December 2025 (submission of a project outline, two-stage procedure)"
+   Beispiel DE: "5. Dezember 2025 (Einreichung einer Projektskizze, zweistufiges Verfahren)"
+   Bei dauerhaft offenen Calls: "continuously open" (EN) / "fortlaufend" (DE)
 
 5. FEHLENDE INFORMATIONEN: "not specified" (EN) / "Keine Angabe" (DE)
 
@@ -219,23 +267,23 @@ REGELN:
 {text}
 </ausschreibung>
 
-Ausgabe NUR in diesem Format (keine zusätzlichen Felder, keine Umsortierung):
+Ausgabe NUR in diesem Format – Feldbezeichnungen passend zur erkannten Sprache
+(keine zusätzlichen Felder, keine Umsortierung):
 
-**Title:** (Name der Ausschreibung)
+**Title:** / **Titel:**
 
-**Aim:** (3–5 sachliche Sätze: Was wird gefördert? Ziel? Thematische Schwerpunkte oder
-Förderbereiche? Direkt zur Sache – kein "The programme aims to" als Einstieg.)
+**Aim:** / **Ziel:**
+(3–5 sachliche Sätze: Was wird gefördert? Ziel? Thematische Schwerpunkte?)
 
-**Target group:** (Antragstyp + antragsberechtigt Institutionen/Personen + relevante
-Einschränkungen, kompakt in einem Satz oder präzisen Stichwörtern)
+**Target group:** / **Zielgruppe:**
 
-**Duration:** (Projektlaufzeit; bei Phasen alle nennen)
+**Duration:** / **Laufzeit:**
 
-**Funding:** (Fördersumme PRO PROJEKT mit Bezugspunkt; Phasen/Varianten alle auflisten)
+**Funding:** / **Förderhöhe:**
 
-**Deadline:** (Datum + Verfahrensart in Klammern)
+**Deadline:** / **Fristende:**
 
-**Further information:** (URL oder "website of [Fördergeber]")"""
+**Further information:** / **Website:**"""
 
 # ========== ZWEI SPALTEN: PROMPT | AUSSCHREIBUNGSTEXT ==========
 col1, col2 = st.columns(2)
@@ -300,9 +348,8 @@ if summarize_clicked:
                 if url:
                     final_prompt += (
                         f"\n\nDie URL der Ausschreibung lautet: {url}\n"
-                        "Trage diese URL exakt so unter 'Further information' ein."
+                        "Trage diese URL exakt so unter 'Further information' / 'Website' ein."
                     )
-                # Tuple-Unpacking: (text, usage)
                 response_text, usage = client.generate(final_prompt, temperature=0.1, max_tokens=2048)
                 st.session_state.response = response_text
                 st.session_state.translated_response = ""
@@ -315,26 +362,26 @@ if summarize_clicked:
 # ========== ERGEBNIS ANZEIGEN ==========
 if st.session_state.response:
     st.divider()
-    st.subheader("📋 Antwort (Deutsch)")
+    st.subheader("📋 Analyse-Ergebnis")
     st.markdown(st.session_state.response)
 
     col_down1, col_down2 = st.columns(2)
     with col_down1:
         st.download_button(
             label="📥 Als Markdown (.md)",
-            data=st.session_state.response,   # garantiert ein String
-            file_name="antwort_de.md",
+            data=st.session_state.response,
+            file_name="antwort.md",
             mime="text/markdown"
         )
     with col_down2:
         st.download_button(
             label="📄 Als Text (.txt)",
             data=st.session_state.response,
-            file_name="antwort_de.txt",
+            file_name="antwort.txt",
             mime="text/plain"
         )
 
-    # Übersetzungs-Button direkt unter der deutschen Antwort
+    # Übersetzungs-Button direkt unter der Antwort
     if st.button("🌐 Ins Englische übersetzen"):
         with st.spinner("Übersetze ..."):
             try:
@@ -342,14 +389,13 @@ if st.session_state.response:
                 if st.session_state.selected_model:
                     client.model = st.session_state.selected_model
                 translation_prompt = (
-                    "Übersetze den folgenden deutschen Text präzise und professionell ins Englische.\n"
+                    "Übersetze den folgenden Text präzise und professionell ins Englische.\n"
                     "WICHTIG: Behalte die **exakte Formatierung** bei, insbesondere **Fettdruck** "
                     "(z.B. `**Förderung:**` → `**Funding:**`).\n"
                     "Die Feldbezeichnungen MÜSSEN fett sein.\n"
                     "Antworte NUR mit der Übersetzung, ohne zusätzliche Erklärungen.\n\n"
-                    f"Deutscher Text:\n{st.session_state.response}\n\nEnglische Übersetzung:"
+                    f"Text:\n{st.session_state.response}\n\nEnglische Übersetzung:"
                 )
-                # Tuple-Unpacking: (text, usage)
                 translated_text, usage = client.generate(translation_prompt, temperature=0.1, max_tokens=2048)
                 st.session_state.translated_response = translated_text
                 update_token_stats(usage)
@@ -365,7 +411,7 @@ if st.session_state.translated_response:
     with col_t1:
         st.download_button(
             label="📥 Übersetzung als Markdown (.md)",
-            data=st.session_state.translated_response,  # garantiert ein String
+            data=st.session_state.translated_response,
             file_name="antwort_en.md",
             mime="text/markdown"
         )
