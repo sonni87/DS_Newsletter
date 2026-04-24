@@ -36,13 +36,12 @@ st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
-/* Global font override – alle Elemente */
+/* Global font override – alle Elemente, aber NICHT Icon-Fonts */
 :root {{
     --font-sans-serif: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }}
-*, html, body,
+html, body,
 [class*="css"],
-[class*="st-"],
 .stApp,
 .stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
 .stTextArea textarea,
@@ -54,15 +53,25 @@ st.markdown(f"""
 .stTabs [data-baseweb="tab"],
 .stCaption, .stCaption p,
 section[data-testid="stSidebar"],
-section[data-testid="stSidebar"] *,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] div,
+section[data-testid="stSidebar"] button,
+section[data-testid="stSidebar"] input,
 [data-testid="stMetric"],
-[data-testid="stMetric"] *,
-[data-testid="stMetricLabel"],
+[data-testid="stMetricLabel"] p,
 [data-testid="stMetricValue"],
-[data-testid="stExpander"] *,
 h1, h2, h3, h4, h5, h6,
 p, span, div, label, input, textarea, button, a, li, td, th, caption {{
     font-family: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}}
+/* Icon-Fonts nicht überschreiben */
+[data-testid="stExpanderToggleIcon"],
+[data-testid="stExpanderToggleIcon"] *,
+.eyeqlp52, .e1nzilvr5,
+svg, path, i {{
+    font-family: inherit;
 }}
 
 /* Überschriften */
@@ -749,10 +758,25 @@ Ausgabe NUR in diesem Format:
 **Deadline:** / **Fristende:**
 **Further information:** / **Website:**"""
 
+    # Header-Zeile für beide Spalten
+    head1, head2 = st.columns(2)
+    with head1:
+        st.subheader("📝 Prompt")
+    with head2:
+        h2a, h2b = st.columns([4, 1])
+        with h2a:
+            st.subheader("📄 Ausschreibungstext")
+        with h2b:
+            if st.button("🧹 Leeren", key="clear_btn", use_container_width=True):
+                st.session_state.text_area_key += 1
+                st.session_state.user_text = ""
+                st.session_state.url_input = ""
+                st.rerun()
+
+    # Textfelder auf gleicher Höhe
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("📝 Prompt")
         prompt_template = st.text_area(
             "Prompt bearbeiten (Platzhalter `{text}`)",
             value=default_prompt,
@@ -761,20 +785,9 @@ Ausgabe NUR in diesem Format:
         )
 
     with col2:
-        col2a, col2b = st.columns([3, 1])
-        with col2a:
-            st.subheader("📄 Ausschreibungstext")
-        with col2b:
-            st.write("")
-            if st.button("🧹 Leeren", key="clear_btn"):
-                st.session_state.text_area_key += 1
-                st.session_state.user_text = ""
-                st.session_state.url_input = ""
-                st.rerun()
-
         user_text = st.text_area(
             "Volltext der Ausschreibung einfügen",
-            height=350,
+            height=400,
             placeholder="Den kompletten Ausschreibungstext hier einfügen...",
             key=f"user_text_input_{st.session_state.text_area_key}"
         )
