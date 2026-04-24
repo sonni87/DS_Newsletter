@@ -16,7 +16,7 @@ from llm_client import LLMClient, KIConnectError
 # Seiteneinstellungen
 # =============================================================================
 st.set_page_config(
-    page_title="Förder-Tools · Universität zu Köln",
+    page_title="Newsletteranalyse-Tools · D7 Forschungsmanagement",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -28,7 +28,6 @@ st.set_page_config(
 UZK_BLAU      = "#005176"
 UZK_TUERKIS   = "#009dcc"
 UZK_KORALL    = "#ea564f"
-UZK_ROT       = "#BE0A26"
 UZK_HELLGRAU  = "#f4f6f8"
 UZK_DUNKELGRAU = "#1a1a1a"
 
@@ -124,15 +123,15 @@ section[data-testid="stSidebar"] h3 {{
     color: white;
 }}
 
-/* Primär-Button Rot */
+/* Primär-Button Korall (Markenhandbuch) */
 div[data-testid="stButton"]:has(button[kind="primary"]) > button {{
-    background-color: {UZK_ROT} !important;
+    background-color: {UZK_KORALL} !important;
     color: white !important;
     font-weight: 600 !important;
     border-radius: 6px;
 }}
 div[data-testid="stButton"]:has(button[kind="primary"]) > button:hover {{
-    background-color: #99071E !important;
+    background-color: #d04a43 !important;
 }}
 
 /* Download-Buttons */
@@ -203,6 +202,50 @@ a:hover {{ color: {UZK_BLAU} !important; }}
 .streamlit-expanderHeader {{
     font-weight: 500 !important;
     color: {UZK_BLAU} !important;
+}}
+
+/* Kapitälchen für Spaltenüberschriften */
+.uzk-smallcaps {{
+    font-variant: small-caps;
+    text-transform: lowercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: {UZK_BLAU};
+}}
+
+/* Weniger Abstand oben */
+.stApp > header + div {{
+    padding-top: 0 !important;
+}}
+.block-container {{
+    padding-top: 1.5rem !important;
+}}
+
+/* Sphären-Hintergrund (Markenhandbuch-Gestaltungselement) */
+.stApp {{
+    background:
+        radial-gradient(ellipse 600px 600px at 95% 10%, rgba(0,157,204,0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 450px 450px at 85% 25%, rgba(234,86,79,0.03) 0%, transparent 70%),
+        radial-gradient(ellipse 500px 500px at 5% 85%, rgba(0,81,118,0.04) 0%, transparent 70%),
+        radial-gradient(ellipse 350px 350px at 15% 70%, rgba(0,157,204,0.03) 0%, transparent 70%),
+        white !important;
+}}
+
+/* Dezenter Leeren-Button */
+.clear-btn-container button {{
+    background-color: transparent !important;
+    color: {UZK_BLAU} !important;
+    border: 1px solid #c0cad4 !important;
+    font-size: 0.8rem !important;
+    font-weight: 400 !important;
+    padding: 0.25rem 0.8rem !important;
+    min-height: 0 !important;
+    height: auto !important;
+    line-height: 1.4 !important;
+}}
+.clear-btn-container button:hover {{
+    background-color: {UZK_HELLGRAU} !important;
+    border-color: {UZK_BLAU} !important;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -604,12 +647,12 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.caption("Förder-Tools · Prompt Client v1.4")
+    st.caption("Newsletteranalyse-Tools · v1.5")
 
 # =============================================================================
 # Hauptbereich – Zwei Tabs
 # =============================================================================
-st.title("🎓 Förder-Tools · Universität zu Köln")
+st.title("🎓 Newsletteranalyse-Tools · D7 Forschungsmanagement")
 
 tab1, tab2 = st.tabs(["📋 Förder-Screener", "📰 Newsletter Summarizer"])
 
@@ -751,13 +794,14 @@ Ausgabe NUR in diesem Format:
     # Header-Zeile für beide Spalten
     head1, head2 = st.columns(2)
     with head1:
-        st.subheader("📝 Prompt")
+        st.markdown(f"<h3 class='uzk-smallcaps'>📝 Prompt</h3>", unsafe_allow_html=True)
     with head2:
-        h2a, h2b = st.columns([4, 1])
+        h2a, h2b = st.columns([5, 1])
         with h2a:
-            st.subheader("📄 Ausschreibungstext")
+            st.markdown(f"<h3 class='uzk-smallcaps'>📄 Ausschreibungstext</h3>", unsafe_allow_html=True)
         with h2b:
-            if st.button("🧹 Leeren", key="clear_btn", use_container_width=True):
+            st.write("")  # Vertikaler Abstand zum Ausrichten
+            if st.button("🧹", key="clear_btn", help="Textfelder leeren"):
                 st.session_state.text_area_key += 1
                 st.session_state.user_text = ""
                 st.session_state.url_input = ""
@@ -892,6 +936,6 @@ Ausgabe NUR in diesem Format:
 # Footer
 # =============================================================================
 st.markdown(
-    '<div class="uzk-footer-line">Universität zu Köln · Dezernat 7 Forschungsmanagement</div>',
+    '<div class="uzk-footer-line">Universität zu Köln · D7 Forschungsmanagement</div>',
     unsafe_allow_html=True,
 )
