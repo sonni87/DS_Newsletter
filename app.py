@@ -36,42 +36,32 @@ st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
-/* Global font override – alle Elemente, aber NICHT Icon-Fonts */
+/* Global font override – nur Text-Elemente, NICHT Icon-Ligaturen */
 :root {{
     --font-sans-serif: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }}
 html, body,
 [class*="css"],
 .stApp,
-.stMarkdown, .stMarkdown p, .stMarkdown li, .stMarkdown span,
+.stMarkdown p, .stMarkdown li,
 .stTextArea textarea,
 .stTextInput input, .stTextInput label,
-.stSelectbox, .stSelectbox label, .stSelectbox div,
-.stMultiSelect, .stMultiSelect label,
+.stSelectbox label,
+.stMultiSelect label,
 .stButton button,
 .stDownloadButton button,
 .stTabs [data-baseweb="tab"],
-.stCaption, .stCaption p,
-section[data-testid="stSidebar"],
+.stCaption p,
 section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] span,
 section[data-testid="stSidebar"] label,
-section[data-testid="stSidebar"] div,
 section[data-testid="stSidebar"] button,
 section[data-testid="stSidebar"] input,
-[data-testid="stMetric"],
 [data-testid="stMetricLabel"] p,
-[data-testid="stMetricValue"],
+[data-testid="stMetricValue"] div,
+[data-testid="stExpander"] summary p,
 h1, h2, h3, h4, h5, h6,
-p, span, div, label, input, textarea, button, a, li, td, th, caption {{
+p, label, input, textarea, button, td, th {{
     font-family: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-}}
-/* Icon-Fonts nicht überschreiben */
-[data-testid="stExpanderToggleIcon"],
-[data-testid="stExpanderToggleIcon"] *,
-.eyeqlp52, .e1nzilvr5,
-svg, path, i {{
-    font-family: inherit;
 }}
 
 /* Überschriften */
