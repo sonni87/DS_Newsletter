@@ -34,21 +34,67 @@ UZK_DUNKELGRAU = "#1a1a1a"
 
 st.markdown(f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Albert+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
-html, body, [class*="css"] {{
+html, body, [class*="css"], .stMarkdown, .stTextArea textarea,
+.stTextInput input, .stSelectbox, .stButton button {{
     font-family: 'Albert Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }}
 
-h1 {{ color: {UZK_BLAU} !important; }}
+/* Überschriften */
+h1 {{
+    color: {UZK_BLAU} !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em;
+}}
+h2, h3 {{
+    color: {UZK_BLAU} !important;
+    font-weight: 600 !important;
+}}
 
-section[data-testid="stSidebar"] {{ background-color: {UZK_HELLGRAU}; }}
+/* Sidebar */
+section[data-testid="stSidebar"] {{
+    background: linear-gradient(180deg, {UZK_HELLGRAU} 0%, #eaeff3 100%);
+    border-right: 1px solid #dce3ea;
+}}
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {{
+    color: {UZK_BLAU} !important;
+}}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {{
+    gap: 0;
+    border-bottom: 2px solid #e0e5eb;
+}}
+.stTabs [data-baseweb="tab"] {{
+    padding: 0.7rem 1.5rem;
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: #6b7b8d;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+}}
+.stTabs [data-baseweb="tab"]:hover {{
+    color: {UZK_BLAU};
+    background: {UZK_HELLGRAU};
+}}
+.stTabs [aria-selected="true"] {{
+    color: {UZK_BLAU} !important;
+    font-weight: 700 !important;
+    border-bottom: 3px solid {UZK_TUERKIS} !important;
+    background: transparent !important;
+}}
 
 /* Standard-Buttons Türkis */
 .stButton > button {{
     background-color: {UZK_TUERKIS};
     color: white;
     border: none;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
 }}
 .stButton > button:hover {{
     background-color: {UZK_BLAU} !important;
@@ -59,7 +105,8 @@ section[data-testid="stSidebar"] {{ background-color: {UZK_HELLGRAU}; }}
 div[data-testid="stButton"]:has(button[kind="primary"]) > button {{
     background-color: {UZK_ROT} !important;
     color: white !important;
-    font-weight: bold !important;
+    font-weight: 600 !important;
+    border-radius: 6px;
 }}
 div[data-testid="stButton"]:has(button[kind="primary"]) > button:hover {{
     background-color: #99071E !important;
@@ -69,7 +116,9 @@ div[data-testid="stButton"]:has(button[kind="primary"]) > button:hover {{
 .stDownloadButton > button {{
     background-color: white !important;
     color: {UZK_BLAU} !important;
-    border: 1px solid {UZK_BLAU} !important;
+    border: 1.5px solid {UZK_BLAU} !important;
+    font-weight: 500;
+    border-radius: 6px;
 }}
 .stDownloadButton > button:hover {{
     background-color: {UZK_BLAU} !important;
@@ -80,23 +129,54 @@ div[data-testid="stButton"]:has(button[kind="primary"]) > button:hover {{
 [data-testid="stMetric"] {{
     background: {UZK_HELLGRAU};
     padding: 1rem 1.2rem;
-    border-radius: 4px;
+    border-radius: 6px;
     border-left: 4px solid {UZK_BLAU};
 }}
 [data-testid="stMetricValue"] {{
     color: {UZK_BLAU} !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
 }}
 
+/* Text-Eingabefelder */
+.stTextArea textarea, .stTextInput input {{
+    border: 1.5px solid #d0d8e0 !important;
+    border-radius: 6px !important;
+    font-size: 0.9rem !important;
+}}
+.stTextArea textarea:focus, .stTextInput input:focus {{
+    border-color: {UZK_TUERKIS} !important;
+    box-shadow: 0 0 0 2px rgba(0,157,204,0.15) !important;
+}}
+
+/* Links */
 a {{ color: {UZK_TUERKIS} !important; }}
 a:hover {{ color: {UZK_BLAU} !important; }}
 
+/* Info-Leiste */
+.uzk-info-bar {{
+    border-left: 5px solid;
+    padding: 0.5rem 0 0.5rem 1rem;
+    margin-bottom: 1.2rem;
+    border-radius: 0 6px 6px 0;
+    background: {UZK_HELLGRAU};
+    font-size: 0.92rem;
+    color: {UZK_DUNKELGRAU};
+}}
+
+/* Footer */
 .uzk-footer-line {{
-    color: #777;
-    font-size: 0.8rem;
-    margin-top: 2rem;
+    color: #8899aa;
+    font-size: 0.78rem;
+    margin-top: 2.5rem;
     padding-top: 1rem;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid #e0e5eb;
+    text-align: center;
+}}
+
+/* Expander */
+.streamlit-expanderHeader {{
+    font-weight: 500 !important;
+    color: {UZK_BLAU} !important;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -125,8 +205,10 @@ for k, v in defaults.items():
 # Hilfsfunktionen Token
 # =============================================================================
 MODEL_CONTEXT_WINDOWS = {
-    "mistral-small-3.2-24b-instruct-2506": 128_000,
     "mistral-small-4-119b-2603":           128_000,
+    "mistral-small-4-119b":                128_000,
+    "mistral-small-3.2-24b-instruct-2506": 128_000,
+    "mistral-small-3-2-24b":               128_000,
     "gpt-oss-120b":                        128_000,
     "e5-mistral-7b-instruct":               32_000,
 }
@@ -436,6 +518,14 @@ with st.sidebar:
             options=st.session_state.available_models,
             index=st.session_state.available_models.index(st.session_state.selected_model)
         )
+        # Empfehlung anzeigen
+        sel = (st.session_state.selected_model or "").lower()
+        if "119b" in sel:
+            st.caption("⭐ Empfohlen – bestes Modell für strukturierte Analyse")
+        elif "120b" in sel or "gpt-oss" in sel:
+            st.caption("✅ Gute Alternative")
+        elif "24b" in sel:
+            st.caption("⚡ Schneller, aber weniger präzise")
         st.markdown(f"**Aktiv:** `{st.session_state.selected_model}`")
 
     # Token-Anzeige
@@ -480,7 +570,7 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
-    st.caption("Förder-Tools · Prompt Client v1.3")
+    st.caption("Förder-Tools · Prompt Client v1.4")
 
 # =============================================================================
 # Hauptbereich – Zwei Tabs
@@ -494,10 +584,9 @@ tab1, tab2 = st.tabs(["📋 Förder-Screener", "📰 Newsletter Summarizer"])
 # -----------------------------------------------------------------------------
 with tab1:
     st.markdown(
-        f"<div style='border-left:6px solid {UZK_KORALL}; padding:0.4rem 0 0.4rem 1rem; margin-bottom:1.2rem'>"
-        f"<span style='font-size:0.95rem; color:{UZK_DUNKELGRAU}; opacity:0.8'>"
+        f"<div class='uzk-info-bar' style='border-color:{UZK_KORALL}'>"
         "Prüft Ausschreibungstexte auf Beschränkungen bei der Anzahl von Anträgen bzw. Skizzen pro Einrichtung."
-        "</span></div>",
+        "</div>",
         unsafe_allow_html=True,
     )
 
@@ -574,10 +663,9 @@ with tab1:
 # -----------------------------------------------------------------------------
 with tab2:
     st.markdown(
-        f"<div style='border-left:6px solid {UZK_TUERKIS}; padding:0.4rem 0 0.4rem 1rem; margin-bottom:1.2rem'>"
-        f"<span style='font-size:0.95rem; color:{UZK_DUNKELGRAU}; opacity:0.8'>"
+        f"<div class='uzk-info-bar' style='border-color:{UZK_TUERKIS}'>"
         "Fasst Förderausschreibungen strukturiert für den Newsletter zusammen. API-Key in der Sidebar eingeben."
-        "</span></div>",
+        "</div>",
         unsafe_allow_html=True,
     )
 
